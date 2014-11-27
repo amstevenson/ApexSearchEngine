@@ -1,0 +1,57 @@
+BEGIN
+
+INSERT INTO hotels (rating_id, hotel_name, hotel_document, hotel_average_price, hotel_contact, hotel_postcode) VALUES ('9',
+'Boringdon Hall Hotel',q'{On the edge of the idyllic Dartmoor National Park and just five minutes from Plymouth, the 4-star Boringdon Hall Hotel features fantastic historic interiors and elegant rooms.
+
+All of Boringdon Hall’s beautifully decorated rooms feature flat-screen LCD TVs, private bathrooms with luxury toiletries, and tea/coffee facilities. Rooms feature bright, modern decor, and some have classic furnishings with carved wood beds, antique furniture, and historic features.
+
+The Gallery Restaurant at Boringdon provides a variety of traditional English cuisine in intimate, candlelit surroundings. Guests van relax at the Boringdon Bar, with its leather sofas, oak-paneled bar, and arched doorway.
+
+Traditional afternoon teas can be enjoyed in comfortable sofas within the magnificent Great Hall, decorated with the coat of arms of James I, a grand stone fireplace, and suits of armor.
+
+The hotel can help guests in arranging activities, including climbing, horseback riding, or scenic walks within Dartmoor National Park. The 18-hole golf course at Boringdon Park is also just a few minutes away. (Description from booking.com)}','150.00','01752 344455','PL7 4DP');
+
+
+INSERT INTO hotels (rating_id, hotel_name, hotel_document, hotel_average_price, hotel_contact, hotel_postcode) VALUES (
+'10','Elfordleigh Hotel',q'{Set on 100 acres of glorious parkland, this traditional English country house is perfectly positioned for exploring both the timeless elegance of Devon and the bustling center of Plymouth.
+
+Providing peace, calm and tranquility, this privately owned hotel boasts an atmosphere of warmth, ease and charm, for both business travelers and tourists. The beauty which surrounds Elfordleigh influences the character of the hotel and its rooms.
+
+During your free time you can take advantage of the hotel’s extensive recreational facilities, including an 18-hole golf course, fully-equipped gym and a relaxing spa. Alternatively, you can enjoy a relaxing walk around the beautiful parkland. (Booking.com)}','120.00','01752 348425','PL7 5EB');
+
+
+INSERT INTO hotels (rating_id, hotel_name, hotel_document, hotel_average_price, hotel_contact, hotel_postcode) VALUES ( '9',
+'Farmers Arms',q'{A beautiful inn nestled in the tranquil Somerset countryside, The Farmers Arms boasts light, elegant rooms with views of the rolling hills. A flagstone-paved bar with an open fire, and an oak-beamed restaurant serve hearty food and real ales.
+
+Unique touches are offered in many rooms, including roll-top baths, private entrances and comfortable king-size beds. Every room at The Farmers provides cosy bathrobes, en suite bathroom, and a flat-screen TV/DVD player.
+
+The rustic, traditional bar serves an extensive range of local Somerset ales, and the restaurant provides a specials menu and hearty, varied lunch and dinner menus including venison, homemade fishcakes and wild mushroom strudel.
+
+An Area of Outstanding Natural Beauty, the surrounding Quantock Hills can be enjoyed through numerous walking paths. Taunton’s centre is 15 minutes’ drive away, and Taunton and Pickeridge Golf Club is a 10-minute drive. Description from Booking.com.}','60.00','01823 480980','TA3 5RS');
+
+INSERT INTO hotels (rating_id, hotel_name, hotel_document, hotel_average_price, hotel_contact, hotel_postcode) VALUES ( '',
+'hotel_name',q'{hotel document/description}','hotel_rating','hotel_average_price','hotel_contact','hotel_postcode');
+
+INSERT INTO hotels (rating_id, hotel_name, hotel_document, hotel_average_price, hotel_contact, hotel_postcode) VALUES ( '',
+'hotel_name',q'{hotel document/description}','hotel_rating','hotel_average_price','hotel_contact','hotel_postcode');
+
+INSERT INTO hotels (rating_id, hotel_name, hotel_document, hotel_average_price, hotel_contact, hotel_postcode) VALUES ( '',
+'hotel_name',q'{hotel document/description}','hotel_rating','hotel_average_price','hotel_contact','hotel_postcode');
+
+INSERT INTO hotels (rating_id, hotel_name, hotel_document, hotel_average_price, hotel_contact, hotel_postcode) VALUES ( '',
+'hotel_name',q'{hotel document/description}','hotel_rating','hotel_average_price','hotel_contact','hotel_postcode');
+
+INSERT INTO hotels (rating_id, hotel_name, hotel_document, hotel_average_price, hotel_contact, hotel_postcode) VALUES ( '',
+'hotel_name',q'{hotel document/description}','hotel_rating','hotel_average_price','hotel_contact','hotel_postcode');
+
+INSERT INTO hotels (rating_id, hotel_name, hotel_document, hotel_average_price, hotel_contact, hotel_postcode) VALUES ( '',
+'hotel_name',q'{hotel document/description}','hotel_rating','hotel_average_price','hotel_contact','hotel_postcode');
+
+INSERT INTO hotels (rating_id, hotel_name, hotel_document, hotel_average_price, hotel_contact, hotel_postcode) VALUES ( '',
+'hotel_name',q'{hotel document/description}','hotel_rating','hotel_average_price','hotel_contact','hotel_postcode');
+
+COMMIT
+
+END;
+
+-- 

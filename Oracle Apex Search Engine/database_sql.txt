@@ -1,0 +1,374 @@
+/*****************************************************************
+*                       RATINGS TABLE                            *
+*****************************************************************/
+
+CREATE TABLE ratings
+(
+  rating_id   NUMBER
+              CONSTRAINT ratings_rating_id_pk
+                PRIMARY KEY,
+  rating_name VARCHAR2(12)
+              CHECK(REGEXP_LIKE(rating_name,
+                  '[A-Za-z0-9]'))
+              CONSTRAINT rating_rating_name_nn
+                NOT NULL
+)
+
+-- Sequence
+CREATE SEQUENCE seq_rating_id
+START WITH 1
+INCREMENT BY 1
+NOCACHE;
+
+-- Trigger(s)
+CREATE OR REPLACE TRIGGER trg_ratings
+BEFORE INSERT OR UPDATE ON ratings FOR EACH ROW
+  BEGIN 
+  IF INSERTING THEN
+    IF :NEW.rating_id IS NULL THEN
+      SELECT seq_rating_id.nextval
+      INTO :NEW.rating_id
+      FROM sys.dual;
+    END IF;
+  END IF;
+
+  -- Change the format of certain fields
+  -- First letter upper case of name of document
+END;
+
+-- Inserting
+INSERT INTO ratings (rating_name) VALUES ('One Star');
+INSERT INTO ratings (rating_name) VALUES ('Two Star');
+INSERT INTO ratings (rating_name) VALUES ('Three Star');
+INSERT INTO ratings (rating_name) VALUES ('Four Star');
+INSERT INTO ratings (rating_name) VALUES ('Five Star');
+
+/*****************************************************************
+*					              DOCUMENTS TABLE                          *
+*****************************************************************/
+
+CREATE TABLE hotels
+(
+	hotel_id 		          NUMBER
+			 				            CONSTRAINT hotels_hotel_id_pk 
+			 					           PRIMARY KEY,
+  rating_id             NUMBER
+                          CONSTRAINT hotels_rating_id_fk
+                            REFERENCES ratings(rating_id)
+                          CONSTRAINT hotels_rating_id_nn
+                            NOT NULL,
+  hotel_name            VARCHAR2(50)
+                        CONSTRAINT hotels_hotel_name_check
+                          CHECK(REGEXP_LIKE(hotel_name,
+                            '[A-Za-z0-9]'))
+                        CONSTRAINT hotels_hotel_name_nn
+                          NOT NULL,
+ 	hotel_document 			  CLOB
+							            CONSTRAINT hotels_doc_nn
+								            NOT NULL,
+  hotel_average_price   VARCHAR2(12) DEFAULT '0.00'
+                          CONSTRAINT hotels_hotel_price_check
+                            CHECK(REGEXP_LIKE(hotel_average_price,
+                              '([0-9]{0,10})(\.[0-9]{2})?$|^-?(100)(\.[0]{1,2})'))
+                          CONSTRAINT hotel_average_price_nn
+                            NOT NULL,
+  hotel_contact         VARCHAR2(15) 
+                          CONSTRAINT hotels_hotel_contact_check
+                            CHECK(REGEXP_LIKE(hotel_contact,
+                              '[0-9]{5}\s?[0-9]{6}')),
+  hotel_postcode         VARCHAR2(10)
+                        CONSTRAINT hotels_hotel_postcode_check
+                          CHECK(REGEXP_LIKE(hotel_postcode,
+                           '(([A-PR-UW-Z]{1}[A-IK-Y]?)([0-9]?[A-HJKS-UW]?[ABEHMNPRVWXY]?|[0-9]?[0-9]?))\s?([0-9]{1}[ABD-HJLNP-UW-Z]{2})'))
+                        CONSTRAINT hotels_hotel_postcode_nn
+                          NOT NULL,
+  hotel_geometry     MDSYS.SDO_GEOMETRY
+);
+
+-- Sequence
+CREATE SEQUENCE seq_hotel_id
+START WITH 1
+INCREMENT BY 1
+NOCACHE;
+
+-- Index full text search
+-- This is shared between two reports in the application
+CREATE INDEX hotels_ctx_idx
+ON hotels (hotel_document)
+INDEXTYPE IS ctxsys.context;
+
+-- Trigger(s)
+CREATE OR REPLACE TRIGGER trg_hotels
+BEFORE INSERT OR UPDATE ON hotels FOR EACH ROW
+	BEGIN 
+	IF INSERTING THEN
+		IF :NEW.hotel_id IS NULL THEN
+			SELECT seq_hotel_id.nextval
+			INTO :NEW.hotel_id
+			FROM sys.dual;
+		END IF;
+	END IF;
+
+  :NEW.hotel_geometry := set_postcode_geometry(:NEW.hotel_postcode);
+
+END;
+
+-- Function for retrieving map information
+-- @return a 2D MDSYS.SDO_GEOMETRY object (using the lecture slides as a referal point)
+--         using Brians procedure to collect co-ordinate information. 
+CREATE OR REPLACE FUNCTION set_postcode_geometry (p_postcode IN VARCHAR2) 
+RETURN MDSYS.SDO_GEOMETRY
+IS
+
+l_lat         VARCHAR2(100); -- Longitude
+l_lng         VARCHAR2(100); -- Latitude
+
+BEGIN
+
+  -- Use the Google Maps API to collect longitude and latitude information.
+  brian.POSTCODE_TO_LAT_LNG_GM_API(p_postcode, l_lat, l_lng);
+
+  -- Return a MDSYS.SDO_GEOMETRY object
+  -- We are going to be returning a point geometry (as we are using co-ordinates)
+  RETURN MDSYS.SDO_GEOMETRY
+  (
+    2001, -- SDO_GTYPE: Add one 2D Point
+    8307, -- SDO_SRID: WGS 84 for latitude and longitude
+
+    -- SDO_POINT: The point information is 2D and so only requires an X and Y value
+    SDO_POINT_TYPE(l_lng, l_lat, null), -- Long = x, Lat = y.
+
+    null, -- SDO_ELEM_INFO_ARRAY
+    null  -- SDO_ORDINATE_ARRAY
+  );
+
+END;
+
+-- Metadata
+INSERT INTO user_sdo_geom_metadata
+    (table_name, column_name, diminfo, SRID)
+  VALUES 
+(
+  'hotels',    -- table name
+  'hotel_geometry', -- column name
+  SDO_DIM_ARRAY(
+    SDO_DIM_ELEMENT('Longitude', -180, 180, 1),  -- 1 meter tolerance
+    SDO_DIM_ELEMENT('Latitude', -90, 90, 1)  -- 1 meter tolerance
+     ),
+  8307   -- SRID for Long/Lat (WGS 84)'
+);
+
+-- Index for retrieving postcode location
+CREATE INDEX hotels_spatial_idx
+ON hotels (hotel_geometry)
+INDEXTYPE IS MDSYS.SPATIAL_INDEX;
+
+-- Inserting
+INSERT INTO hotels (hotel_name, hotel_document, hotel_rating, hotel_average_price, hotel_contact, hotel_postcode) VALUES (
+'hotel_name',q'{hotel document/description}','hotel_rating','hotel_average_price','hotel_contact', 'hotel_postcode');
+
+
+/*****************************************************************
+*					              IMAGES TABLE                             *
+*****************************************************************/
+
+CREATE TABLE images
+(
+	image_id		NUMBER
+						CONSTRAINT images_image_id_pk
+							PRIMARY KEY,
+ 	hotel_id 	NUMBER
+ 						CONSTRAINT images_doc_id_fk
+ 							REFERENCES hotels(hotel_id)
+ 						CONSTRAINT images_doc_id_nn
+ 							NOT NULL,
+ 	image_filename 	VARCHAR2(100)
+ 						CONSTRAINT images_image_filename_nn
+ 							NOT NULL,
+ 	image 			ORDSYS.ORDImage,
+ 					--	CONSTRAINT images_image_nn
+ 					--		NOT NULL,
+ 	image_thumbnail BLOB
+);
+
+-- Sequence
+CREATE SEQUENCE seq_image_id
+START WITH 1
+INCREMENT BY 1
+NOCACHE;
+
+-- Trigger(s)
+CREATE OR REPLACE TRIGGER trg_images
+BEFORE INSERT OR UPDATE ON images FOR EACH ROW
+	BEGIN 
+	IF INSERTING THEN
+		IF :NEW.image_id IS NULL THEN
+			SELECT seq_image_id.nextval
+			INTO :NEW.image_id
+			FROM sys.dual;
+		END IF;
+	END IF;
+END;
+
+------------------------------------- Procedure(1)---------------------
+
+CREATE OR REPLACE PROCEDURE load_image_from_file
+(p_filename IN VARCHAR2, p_hotel_id IN NUMBER) AS
+
+ l_image_id 		INTEGER;
+ l_image    		ORDSYS.ORDImage;
+ ctx        		RAW(4000);
+
+BEGIN
+  INSERT INTO images 
+    (
+     image_id, 
+     hotel_id,
+     image_filename, 
+     image
+     )
+  VALUES 
+    (
+     seq_image_id.nextval,
+     p_hotel_id, 
+     p_filename, 
+     ORDSYS.ORDImage.Init()
+    )
+  RETURNING image_id, image 
+  INTO l_image_id, l_image;
+
+  l_image.importFrom(
+                     ctx, 
+                     'FILE', 
+                     'ISAD330_IMAGES', 
+                     p_filename
+                    );
+  
+  UPDATE images
+  SET image = l_image, 
+      image_filename = p_filename   
+  WHERE image_id = l_image_id;
+  COMMIT;
+END;
+
+BEGIN
+  load_image_from_file('j0145773.jpg', '1'); -- filename/document id
+  load_image_from_file('j0144687.jpg', '2');
+END;
+
+--------------------------------- procedure (2)-------------------------
+
+CREATE OR REPLACE PROCEDURE create_blob_thumbnail (p_image_id IN INTEGER) IS
+  l_orig          ORDSYS.ORDImage;
+  l_thumb         ORDSYS.ORDImage;
+  l_blob_thumb    BLOB;
+ 
+BEGIN
+ 
+  -- lock row
+  SELECT image
+  INTO l_orig
+  FROM images
+  WHERE image_id = p_image_id FOR UPDATE;
+  
+  l_thumb := ORDSYS.ORDImage.Init();
+  dbms_lob.createTemporary(l_thumb.source.localData, true);
+  ORDSYS.ORDImage.processCopy(l_orig,
+                              'maxscale=128 128',
+                              l_thumb);
+  
+  UPDATE images
+  SET image_thumbnail = l_thumb.source.localData
+  WHERE image_id = p_image_id;
+  
+  dbms_lob.freeTemporary(l_thumb.source.localData);
+  
+  COMMIT; 
+ 
+END;
+
+BEGIN
+  create_blob_thumbnail(1); -- the image id
+  create_blob_thumbnail(2);
+END;
+
+-- Permissions
+GRANT EXECUTE ON create_blob_thumbnail TO APEX_PUBLIC_USER
+GRANT EXECUTE ON create_blob_thumbnail TO adammstevenson
+
+--------------------------- procedure(3)-----------------------
+
+create or replace PROCEDURE upload_new_image
+  (p_filename IN VARCHAR2, p_hotel_id IN NUMBER)
+IS
+
+  l_upload_size   INTEGER;
+  l_upload_blob   BLOB;
+  l_image_id      NUMBER;
+  l_image         ORDSYS.ORDImage;
+    
+BEGIN
+  --
+  -- Get the length, MIME type and the BLOB of the new image from the
+  -- upload table 
+  -- apex_application_files is a synonym for WWV_FLOW_FILES
+  --
+  SELECT doc_size,
+         blob_content
+  INTO   l_upload_size,
+         l_upload_blob
+  FROM apex_application_files
+  WHERE name = p_filename;
+  --
+  -- Insert a new row into the table, initialising the image and 
+  -- returning the newly allocated image_id for later use
+  --
+  INSERT INTO images
+  (
+   image_id,
+   hotel_id,
+   image_filename,
+   image
+  )
+  VALUES
+  (
+   seq_image_id.nextval,
+   p_hotel_id,
+   p_filename,
+   ORDSYS.ORDImage()
+  )
+  RETURNING image_id
+  INTO l_image_id;
+    
+  -- lock the row
+  SELECT image
+  INTO l_image
+  FROM images
+  WHERE image_id = l_image_id
+  FOR UPDATE;
+
+-- copy the blob into the ORDImage BLOB container
+DBMS_LOB.COPY( l_image.source.localData, l_upload_blob, l_upload_size );
+l_image.setProperties(); -- just in case
+    
+  UPDATE images
+  SET image = l_image
+  WHERE image_id = l_image_id;
+    
+  -- clear the file from the upload table
+  DELETE FROM apex_application_files  
+  WHERE name = p_filename; 
+
+  COMMIT;
+    
+  EXCEPTION
+  WHEN others
+  THEN htp.p(SQLERRM);
+   
+END upload_new_image;​
+
+-- Permissions
+GRANT EXECUTE ON create_blob_thumbnail TO APEX_PUBLIC_USER
+GRANT EXECUTE ON create_blob_thumbnail TO adammstevenson
+
+
