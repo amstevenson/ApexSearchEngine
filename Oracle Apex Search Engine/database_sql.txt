@@ -31,9 +31,6 @@ BEFORE INSERT OR UPDATE ON ratings FOR EACH ROW
       FROM sys.dual;
     END IF;
   END IF;
-
-  -- Change the format of certain fields
-  -- First letter upper case of name of document
 END;
 
 -- Inserting
@@ -174,21 +171,19 @@ INSERT INTO hotels (hotel_name, hotel_document, hotel_rating, hotel_average_pric
 
 CREATE TABLE images
 (
-	image_id		NUMBER
-						CONSTRAINT images_image_id_pk
-							PRIMARY KEY,
- 	hotel_id 	NUMBER
- 						CONSTRAINT images_doc_id_fk
- 							REFERENCES hotels(hotel_id)
- 						CONSTRAINT images_doc_id_nn
- 							NOT NULL,
- 	image_filename 	VARCHAR2(100)
- 						CONSTRAINT images_image_filename_nn
- 							NOT NULL,
- 	image 			ORDSYS.ORDImage,
- 					--	CONSTRAINT images_image_nn
- 					--		NOT NULL,
- 	image_thumbnail BLOB
+	image_id		          NUMBER
+            						CONSTRAINT images_image_id_pk
+            							PRIMARY KEY,
+ 	hotel_id 	            NUMBER
+             						CONSTRAINT images_doc_id_fk
+             							REFERENCES hotels(hotel_id)
+             						CONSTRAINT images_doc_id_nn
+             							NOT NULL,
+ 	image_filename 	      VARCHAR2(100)
+             						CONSTRAINT images_image_filename_nn
+             							NOT NULL,
+ 	image 			           ORDSYS.ORDImage,
+ 	image_thumbnail        BLOB
 );
 
 -- Sequence
@@ -209,6 +204,55 @@ BEFORE INSERT OR UPDATE ON images FOR EACH ROW
 		END IF;
 	END IF;
 END;
+
+-- FUNCTIONS
+CREATE OR REPLACE FUNCTION compare_average_colour (p_filename IN VARCHAR, p_existing_blob IN BLOB) 
+RETURN DOUBLE PRECISION
+IS
+
+  -- blob to query against that in database (from select box)
+  l_temp_size           INTEGER;
+  l_temp_blob           BLOB;
+  l_temp_stillimage     SI_STILLIMAGE;
+  l_temp_averagecolour  SI_AVERAGECOLOR;
+  l_temp_score          DOUBLE PRECISION;
+
+  -- SI info for blob contained in images table
+  l_existing_stillimage SI_STILLIMAGE;
+
+BEGIN
+
+--
+  -- Get the length, MIME type and the BLOB of the new image from the
+  -- upload table 
+  -- apex_application_files is a synonym for WWV_FLOW_FILES
+  --
+  -- Create a blob to query against
+  SELECT doc_size,
+         blob_content
+  INTO   l_temp_size,
+         l_temp_blob
+  FROM apex_application_files
+  WHERE name = p_filename;
+
+  -- Create the temporary still image and append to local variable
+  l_temp_stillimage     := NEW SI_STILLIMAGE(l_temp_blob);
+  l_temp_averagecolour  := NEW SI_AVERAGECOLOR(l_temp_stillimage);
+  
+  -- Create the still image for blob that already exists in the database
+  l_existing_stillimage := NEW SI_STILLIMAGE(p_existing_blob);
+
+  -- Compare the average colour of the queried blob, with the blob that exists
+  l_temp_score          := SI_ScoreByAvgClr(l_temp_averagecolour, l_existing_stillimage);
+
+  -- Return the comparison 
+  RETURN l_temp_score;
+
+END;​
+
+-- Permissions
+GRANT EXECUTE ON compare_average_colour TO APEX_PUBLIC_USER
+GRANT EXECUTE ON compare_average_colour TO adammstevenson
 
 ------------------------------------- Procedure(1)---------------------
 
@@ -287,6 +331,7 @@ BEGIN
  
 END;
 
+-- Creating data examples
 BEGIN
   create_blob_thumbnail(1); -- the image id
   create_blob_thumbnail(2);
@@ -372,3 +417,29 @@ GRANT EXECUTE ON create_blob_thumbnail TO APEX_PUBLIC_USER
 GRANT EXECUTE ON create_blob_thumbnail TO adammstevenson
 
 
+-- Procedure 4
+create or replace PROCEDURE create_colour_histogram (p_image_id IN INTEGER) IS
+  l_stillimage    SI_STILLIMAGE;
+  l_orig          BLOB;
+  l_colour_hist   SI_COLORHISTOGRAM;
+
+BEGIN
+
+  -- lock row
+  SELECT image_thumbnail
+  INTO l_orig
+  FROM images
+  WHERE image_id = p_image_id FOR UPDATE;
+
+  -- Create the still image and append to local variable
+  l_stillimage   := NEW SI_STILLIMAGE(l_orig);
+  l_colour_hist  := NEW SI_COLORHISTOGRAM(l_stillimage);
+
+  -- Update table based on results
+  UPDATE images
+  SET image_colour_hist = l_colour_hist
+  WHERE image_id = p_image_id;
+
+  COMMIT;
+
+END;​
